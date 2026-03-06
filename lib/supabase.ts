@@ -1,9 +1,22 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient, SupabaseClient } from "@supabase/supabase-js";
 
-const supabaseUrl  = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseKey  = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+// 빌드 타임(SSR) 에서 env가 없을 경우를 대비해 lazy singleton으로 생성
+let _client: SupabaseClient | null = null;
 
-export const supabase = createClient(supabaseUrl, supabaseKey);
+function getClient(): SupabaseClient {
+  if (_client) return _client;
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !key) throw new Error("Supabase env vars not set");
+  _client = createClient(url, key);
+  return _client;
+}
+
+export const supabase = new Proxy({} as SupabaseClient, {
+  get(_target, prop) {
+    return (getClient() as never)[prop];
+  },
+});
 
 // ── 공유 타입 ────────────────────────────────────────────────
 
